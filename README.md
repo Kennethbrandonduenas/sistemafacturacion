@@ -13,6 +13,15 @@ yarn serve # OR npm run serve
 yarn build # OR npm run build
 ```
 
+### Steps to Run Laravel
+
+if you don´t installed composer, upload in https://getcomposer.org/
+
+1. Install Packages
+  composer install
+2. Run the server
+    php artisan serve
+
 ### Steps for Scaffolding From Scratch
 
 1. Create Laravel Project
