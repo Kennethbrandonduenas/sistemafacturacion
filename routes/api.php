@@ -22,3 +22,5 @@ Route::get('/mock', function (Request $request) {
     'msg' => 'Hello Laracon!'
   );
 });
+
+Route::post('/users/register', 'UserController@register');
