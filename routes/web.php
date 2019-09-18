@@ -10,5 +10,7 @@
 | contains the "web" middleware group. Now create something great!
 |
 */
-
 Route::get('/{any}', 'SpaController@index')->where('any', '.*');
+Route::post('/user/register', 'UserController@store');
+Route::post('/user/login', 'UserController@login');
+

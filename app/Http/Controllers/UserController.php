@@ -1,53 +1,71 @@
 <?php
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers;
 use Illuminate\Http\Request; 
-use App\Http\Controllers\Controller; 
 use App\User; 
 use Illuminate\Support\Facades\Auth; 
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller 
 {
-    public $successStatus = 200;
-    public $errorValidator = 401;
-    public function register(Request $request) 
-    { 
-        $rules = [
-            'email' => 'required|email|unique:users',
-            'name' => 'required|min:50',
-            'password' => 'required|min:200',
-            'active' => 'required|min:2',
-            'username' => 'required|email|unique:users',
-            'role' => 'required|min:10'
-        ];
+    public function login(Request $request)
+    {
+        try{
+            $userdataconsult = User::select('email', 'username', 'name', 'role')->where('email', $request->usernameoremail)->orWhere('username',$request->usernameoremail);
+            $userexist = $userdataconsult->count() === 1;
+            if($userexist){
+                $requestisemail = $request->isemail;
+                $isemailequaltrue =  $requestisemail === 'true';
+                $auth = null;
+                if($isemailequaltrue){
+                    $auth = Auth::attempt(['email' => $request->usernameoremail,'password' => $request->password]);
+                }else{
+                    $auth = Auth::attempt(['username' => $request->usernameoremail,'password' => $request->password]);
+                };
+                
+                if ($auth){
+                    $usergetdata = $userdataconsult->get();
+                    return response()->json(['success' => true, 'userstorage' => $usergetdata], 200);
+                }
+                return response()->json(['success' => false, 'message' => 'Contraseña Incorrecta'], 400);
+                //return response()->json(['success' => true, 'array' => $usergetdata], 200);
+                //$checkpasswordiscorrect = 
+            }else{
+                return response()->json(['success' => false, 'message' => 'Usuario no Registrado con estos datos'], 400);
+            };
+            
 
-        $messages = [
-            'email.required' => 'Es necesario especificar una dirección de correo electrónico.',
-            'email.email' => 'El campo e-mail no tiene el formato adecuado.',
-            'email.unique' => 'El e-mail es único por cada usuario, ya que se usará para acceder al sistema.',
-            'name.required' => 'Es necesario ingresar los nombres del usuario.',
-            'name.min' => 'Ingrese un nombre adecuado.',
-            'username.required' => 'Es necesario ingresar un nombre de usuario.',
-            'username.min' => 'Ingrese un nombre de usuario adecuado.',
-            'active.required' => 'Es necesario que pongas que la persona esta activa o no',
-            'active.min' => 'Solo son 2 digitos 0 ó 1',
-            'role.required' => 'Escriba el rol del usuario, es necesario',
-            'role.min' => 'Solo son 15 carácteres'
-        ];
-
-        $validator = Validator::make($request->all(), $rules, $messages);
-        if ($validator->fails()){
-            $response = Response::json('Error', $errorValidator);
+        }catch (Exception $e){
+            return response()->json(['success' => false, 'error' => $e], 500);
         };
-
-        $user = User::create([
-            'email' => $request->get('email'),
-            'password' => bcrypt($request->get('password')),
-            'name' => $request->get('name'),
-            'username' => $request->get('username'),
-            'active' => $request->get('active'),
-            'role' => $request->get('role')
-        ]);
-        $user->save();
-        response()->json(['success'=>$success], $this-> successStatus); 
     }
+    public function store(Request $request)
+    {
+        try{
+            DB::beginTransaction();
+            $user = new User();
+            $userexistwiththisemail = $user::select('id')->where('email', $request->email)->count();
+            $userexistwiththisusername = $user::select('id')->where('username', $request->username)->count();
+            $usernotexistwiththisemail = $userexistwiththisemail === 0;
+            $usernotexistwiththisusername = $userexistwiththisusername === 0;
+            if($usernotexistwiththisemail && $usernotexistwiththisusername){
+                $user->name = $request->name;
+                $user->email = $request->email;
+                $user->role = $request->role;
+                $user->username = $request->username;
+                $user->active = $request->active;
+                $user->password = bcrypt($request->password);      
+                $user->save();
+                DB::commit();
+                return response()->json(['success' => true, 'message' => 'User Registered'], 200);
+            }else if (!$usernotexistwiththisemail) {
+                return response()->json(['success' => false, 'message' => 'Existe un Usuario con este email'], 400);
+            }else if(!$usernotexistwiththisusername){
+                return response()->json(['success' => false, 'message' => 'Existe un Usuario con este nombre de usuario'], 400);
+            }
+        }catch (Exception $e){
+            DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e], 500);
+        }
+    }
+    
 }
